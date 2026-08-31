@@ -1,0 +1,125 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+.*.swp
+.Python
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# uv
+.env
+.venv/
+uv.lock
+
+# Flask
+.flaskenv
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# React/Vite
+.env.local
+.env.*.local
+/node_modules
+/.vite
+/dist
+/public/build
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# macOS
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+desktop.ini
+
+# ML datasets and artifacts
+*.csv
+*.parquet
+*.pkl
+*.joblib
+ml/artifacts/
+ml/data/processed/
+ml/data/interim/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.example
+
+# Documentation (keep documentation files)
+!README.md
+!docs/*.md
+!*.md
+
+# Logs
+logs
+*.log
+
+# Temporary files
+*~
+
+# Python
+.pytest_cache/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
