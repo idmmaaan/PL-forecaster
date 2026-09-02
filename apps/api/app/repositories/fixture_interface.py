@@ -20,3 +20,14 @@ class FixtureRepository(ABC):
     def get_upcoming_fixtures(self, limit: int = 10) -> List[Fixture]:
         """Get upcoming fixtures"""
         pass
+    
+    # Additional methods for database operations (not part of original interface but needed)
+    @abstractmethod
+    def upsert_team(self, team_data: dict) -> "Team":
+        """Upsert a team into the database"""
+        pass
+        
+    @abstractmethod  
+    def upsert_fixture(self, fixture_data: dict) -> "Fixture":
+        """Upsert a fixture into the database"""
+        pass

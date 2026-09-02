@@ -1,90 +1,101 @@
 from typing import List, Optional
 from datetime import datetime, timezone
+from sqlalchemy.orm import Session
 from app.models.fixture import Fixture
-from app.schemas.fixture import FixtureResponse
-from .fixture_interface import FixtureRepository
 from app.models.team import Team
+from app.repositories.fixture_interface import FixtureRepository
+from app.core.database import get_db
 
-class TemporaryFixtureRepository(FixtureRepository):
-    """Temporary fixture repository that returns hardcoded fixtures"""
+
+class SQLAlchemyFixtureRepository(FixtureRepository):
+    """SQLAlchemy-backed fixture repository implementation"""
     
-    def __init__(self):
-        # Create some dummy teams for the fixtures 
-        self.teams = [
-            Team(id=1, provider_id="arsenal", name="Arsenal", short_name="ARS", code="ARS", crest_url=None),
-            Team(id=2, provider_id="chelsea", name="Chelsea", short_name="CHE", code="CHE", crest_url=None),
-            Team(id=3, provider_id="man-city", name="Manchester City", short_name="MCI", code="MCI", crest_url=None),
-        ]
-        
+    def __init__(self, db: Session):
+        self.db = db
+    
     def get_fixtures(self) -> List[Fixture]:
-        """Get all hardcoded fixtures"""
-        return self._create_hardcoded_fixtures()
+        """Get all fixtures from database"""
+        return self.db.query(Fixture).all()
     
     def get_fixture_by_id(self, fixture_id: int) -> Optional[Fixture]:
         """Get a specific fixture by ID"""
-        fixtures = self._create_hardcoded_fixtures()
-        for fixture in fixtures:
-            if fixture.id == fixture_id:
-                return fixture
-        return None
+        return self.db.query(Fixture).filter(Fixture.id == fixture_id).first()
     
     def get_upcoming_fixtures(self, limit: int = 10) -> List[Fixture]:
         """Get upcoming fixtures"""
-        fixtures = self._create_hardcoded_fixtures()
-        # Return all fixtures (they're all upcoming for this temporary implementation)
-        return fixtures[:limit]
+        # For now, we'll just return all fixtures - in a real implementation
+        # this would filter based on date or status  
+        return self.db.query(Fixture).limit(limit).all()
     
-    def _create_hardcoded_fixtures(self) -> List[Fixture]:
-        """Create hardcoded Premier League style fixtures"""
-        # Create a simple mapping of team IDs to make it easier
-        team_map = {team.id: team for team in self.teams}
+    def upsert_team(self, team_data: dict) -> Team:
+        """
+        Upsert a team into the database
         
-        fixtures = [
-            Fixture(
-                id=14621,
-                provider="football-data.org",
-                provider_id="pl-2026-14621",
-                competition_code="PL",
-                season_start_year=2026,
-                matchday=4,
-                kickoff_at=datetime(2026, 9, 12, 14, 0, 0, tzinfo=timezone.utc),
-                status="SCHEDULED",
-                home_team_id=1,  # Arsenal
-                away_team_id=2,  # Chelsea
-                home_score=None,
-                away_score=None,
-                result=None
-            ),
-            Fixture(
-                id=14622,
-                provider="football-data.org",
-                provider_id="pl-2026-14622", 
-                competition_code="PL",
-                season_start_year=2026,
-                matchday=4,
-                kickoff_at=datetime(2026, 9, 12, 16, 30, 0, tzinfo=timezone.utc),
-                status="SCHEDULED",
-                home_team_id=3,  # Manchester City
-                away_team_id=1,  # Arsenal
-                home_score=None,
-                away_score=None,
-                result=None
-            ),
-            Fixture(
-                id=14623,
-                provider="football-data.org",
-                provider_id="pl-2026-14623",
-                competition_code="PL",
-                season_start_year=2026,
-                matchday=5,
-                kickoff_at=datetime(2026, 9, 19, 14, 0, 0, tzinfo=timezone.utc),
-                status="SCHEDULED",
-                home_team_id=2,  # Chelsea
-                away_team_id=3,  # Manchester City
-                home_score=None,
-                away_score=None,
-                result=None
-            )
-        ]
+        Args:
+            team_data: Dictionary containing team information
+            
+        Returns:
+            The persisted Team object
+        """
+        # Try to find existing team by provider_id
+        existing_team = self.db.query(Team).filter(
+            Team.provider_id == team_data['provider_id']
+        ).first()
         
-        return fixtures
+        if existing_team:
+            # Update existing team
+            for key, value in team_data.items():
+                if hasattr(existing_team, key) and key != 'id':
+                    setattr(existing_team, key, value)
+        else:
+            # Create new team 
+            existing_team = Team(**team_data)
+            self.db.add(existing_team)
+        
+        self.db.commit()
+        self.db.refresh(existing_team)
+        return existing_team
+    
+    def upsert_fixture(self, fixture_data: dict) -> Fixture:
+        """
+        Upsert a fixture into the database
+        
+        Args:
+            fixture_data: Dictionary containing fixture information
+            
+        Returns:
+            The persisted Fixture object
+        """
+        # Try to find existing fixture by provider_id  
+        existing_fixture = self.db.query(Fixture).filter(
+            Fixture.provider_id == fixture_data['provider_id']
+        ).first()
+        
+        if existing_fixture:
+            # Update existing fixture
+            for key, value in fixture_data.items():
+                if hasattr(existing_fixture, key) and key != 'id':
+                    setattr(existing_fixture, key, value)
+        else:
+            # Create new fixture
+            existing_fixture = Fixture(**fixture_data)
+            self.db.add(existing_fixture)
+        
+        self.db.commit()
+        self.db.refresh(existing_fixture)
+        return existing_fixture
+
+# Global instance for use in dependency injection
+# Note: In a real application, this would be properly injected via FastAPI dependencies
+_default_db_session = None
+
+def get_fixture_repository(db: Session = None) -> SQLAlchemyFixtureRepository:
+    """Factory function to create fixture repository with database session"""
+    global _default_db_session
+    if db is not None:
+        return SQLAlchemyFixtureRepository(db)
+    elif _default_db_session is not None:
+        return SQLAlchemyFixtureRepository(_default_db_session)
+    else:
+        # This would be initialized properly in a real FastAPI application
+        raise ValueError("No database session provided")
