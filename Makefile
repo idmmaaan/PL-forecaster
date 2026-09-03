@@ -9,7 +9,7 @@ COMPOSE := docker compose -f infra/compose.yaml
 
 .PHONY: help install format lint lint-py lint-web typecheck typecheck-py typecheck-web \
         test test-api test-ml test-web check db-up db-down db-logs db-reset migrate \
-        revision seed sync-fixtures ingest api web clean
+        revision seed sync-fixtures ingest features api web clean
 
 help: ## Show the available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -91,6 +91,9 @@ sync-fixtures: ## Import real fixtures from football-data.org (needs FOOTBALL_DA
 
 ingest: ## Download and canonicalise historical seasons: make ingest seasons=2010:2025
 	$(UV) run python -m epl_predictor.data.ingest $(if $(seasons),--seasons $(seasons),)
+
+features: ## Build the v1 feature table from the canonical matches
+	$(UV) run python -m epl_predictor.features.builder
 
 ## --- Run ---
 
