@@ -17,6 +17,15 @@ class PredictorUnavailableError(RuntimeError):
     """
 
 
+class FeaturesUnavailableError(RuntimeError):
+    """A fixture could not be described in the schema the active model expects.
+
+    Usually an unmapped club name. Raised instead of substituting defaults,
+    because a model fed neutral features returns a confident-looking answer
+    based on nothing.
+    """
+
+
 class InvalidPredictionError(RuntimeError):
     """A predictor returned probabilities that violate the output contract.
 

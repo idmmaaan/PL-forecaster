@@ -12,6 +12,7 @@ from app.core.exceptions import FixtureNotFoundError, InvalidPredictionError
 from app.repositories.in_memory_fixture_repository import InMemoryFixtureRepository
 from app.repositories.in_memory_prediction_repository import InMemoryPredictionRepository
 from app.schemas.prediction import Outcome
+from app.services.feature_service import FIXTURE_METADATA_SCHEMA_VERSION
 from app.services.predictor_service import (
     PredictorService,
     argmax_outcome,
@@ -89,7 +90,7 @@ def test_predict_stores_a_feature_snapshot_with_a_source_cutoff() -> None:
 
     assert stored is not None
     snapshot = stored.feature_snapshot
-    assert snapshot.feature_schema_version == "1.0.0"
+    assert snapshot.feature_schema_version == FIXTURE_METADATA_SCHEMA_VERSION
     assert snapshot.features_json["matchday"] == 4
     assert snapshot.source_cutoff_at == service.fixture_repo.get_fixture_by_id(14621).kickoff_at
 

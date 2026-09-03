@@ -15,7 +15,7 @@ from app.repositories.fixture_interface import FixtureRepository
 from app.repositories.fixture_repository import SQLAlchemyFixtureRepository
 from app.repositories.prediction_interface import PredictionRepository
 from app.repositories.prediction_repository import SQLAlchemyPredictionRepository
-from app.services.model_loader import load_predictor
+from app.services.model_loader import LoadedModel, load_model
 from app.services.predictor_service import PredictorService
 from epl_predictor.predictors.base import Predictor
 
@@ -41,17 +41,27 @@ def get_active_model_version(
     return model_version
 
 
-def get_predictor(
+def get_loaded_model(
     model_version: ModelVersion = Depends(get_active_model_version),
-) -> Predictor:
+) -> LoadedModel:
     """Load the artifact belonging to the promoted model version."""
-    return load_predictor(model_version)
+    return load_model(model_version)
+
+
+def get_predictor(loaded: LoadedModel = Depends(get_loaded_model)) -> Predictor:
+    """Return just the active predictor, for callers that need nothing else."""
+    return loaded.predictor
 
 
 def get_predictor_service(
     fixture_repo: FixtureRepository = Depends(get_fixture_repository),
     prediction_repo: PredictionRepository = Depends(get_prediction_repository),
-    predictor: Predictor = Depends(get_predictor),
-    model_version: ModelVersion = Depends(get_active_model_version),
+    loaded: LoadedModel = Depends(get_loaded_model),
 ) -> PredictorService:
-    return PredictorService(fixture_repo, prediction_repo, predictor, model_version)
+    return PredictorService(
+        fixture_repo,
+        prediction_repo,
+        loaded.predictor,
+        loaded.model_version,
+        loaded.feature_builder,
+    )

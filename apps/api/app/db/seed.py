@@ -19,6 +19,7 @@ from app.models.model_version import ModelStatus, ModelVersion
 from app.models.team import Team
 from app.models.team_alias import TeamAlias
 from app.repositories.fixture_repository import SQLAlchemyFixtureRepository
+from app.services.feature_service import FIXTURE_METADATA_SCHEMA_VERSION
 from app.services.model_loader import resolve_artifact_path
 
 logger = logging.getLogger(__name__)
@@ -28,7 +29,9 @@ STUB_MODEL = {
     "version": "0.1.0",
     "adapter_type": "dummy",
     "artifact_path": "ml/artifacts/dummy-epl-0.1.0",
-    "feature_schema_version": "1.0.0",
+    # The stub ignores its input, so it is registered against the metadata
+    # vector rather than claiming the v1 feature schema it never saw.
+    "feature_schema_version": FIXTURE_METADATA_SCHEMA_VERSION,
     "license_summary": "Project-internal stub predictor; no third-party weights.",
 }
 

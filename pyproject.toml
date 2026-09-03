@@ -9,6 +9,9 @@ dev = [
     "ruff>=0.8",
     "mypy>=1.13",
     "types-requests>=2.32",
+    # CatBoost is the mandatory baseline every candidate must beat, so its
+    # tests must run by default rather than behind an opt-in extra.
+    "catboost>=1.2",
 ]
 
 [tool.ruff]

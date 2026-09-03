@@ -8,6 +8,7 @@ from app.api.fixture_routes import router as fixture_router
 from app.api.prediction_routes import router as prediction_router
 from app.core.config import settings
 from app.core.exceptions import (
+    FeaturesUnavailableError,
     FixtureNotFoundError,
     FixtureNotPredictableError,
     InvalidPredictionError,
@@ -59,6 +60,12 @@ async def handle_fixture_not_predictable(
 async def handle_predictor_unavailable(_: Request, exc: PredictorUnavailableError) -> JSONResponse:
     logger.error("Active predictor unavailable: %s", exc)
     return _error_response(503, f"Prediction model unavailable: {exc}")
+
+
+@app.exception_handler(FeaturesUnavailableError)
+async def handle_features_unavailable(_: Request, exc: FeaturesUnavailableError) -> JSONResponse:
+    logger.error("Could not build features: %s", exc)
+    return _error_response(422, f"Fixture cannot be described for this model: {exc}")
 
 
 @app.exception_handler(InvalidPredictionError)

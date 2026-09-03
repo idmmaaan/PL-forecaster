@@ -1,5 +1,7 @@
 from httpx import AsyncClient
 
+from app.services.feature_service import FIXTURE_METADATA_SCHEMA_VERSION
+
 # The stub predictor is deterministic, so these values are exact.
 EXPECTED_PROBABILITIES = {"home_win": 0.40, "draw": 0.30, "away_win": 0.30}
 
@@ -67,7 +69,9 @@ async def test_predict_reports_model_and_feature_versions(client: AsyncClient) -
 
     assert prediction["model_name"] == "dummy-epl"
     assert prediction["model_version"] == "0.1.0"
-    assert prediction["feature_schema_version"] == "1.0.0"
+    # The stub predictor is fed fixture metadata, not the v1 feature set, and
+    # the snapshot must say so rather than claim a schema it never used.
+    assert prediction["feature_schema_version"] == FIXTURE_METADATA_SCHEMA_VERSION
 
 
 async def test_predict_response_types(client: AsyncClient) -> None:

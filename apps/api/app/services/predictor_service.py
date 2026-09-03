@@ -5,7 +5,7 @@ from app.models.model_version import ModelVersion
 from app.repositories.fixture_interface import FixtureRepository
 from app.repositories.prediction_interface import PredictionRecord, PredictionRepository
 from app.schemas.prediction import PredictionResponse
-from app.services.feature_service import build_feature_vector
+from app.services.feature_service import FeatureBuilder, FixtureMetadataFeatureBuilder
 from epl_predictor import PROBABILITY_KEY_TO_OUTCOME, PROBABILITY_KEYS, Outcome
 from epl_predictor.predictors.base import Predictor
 
@@ -22,24 +22,29 @@ class PredictorService:
         prediction_repo: PredictionRepository,
         predictor: Predictor,
         model_version: ModelVersion,
+        feature_builder: FeatureBuilder | None = None,
     ):
         self.fixture_repo = fixture_repo
         self.prediction_repo = prediction_repo
         self.predictor = predictor
         self.model_version = model_version
+        # Defaulting to fixture metadata keeps feature-free predictors, such as
+        # the stub used in tests, usable without a trained artifact.
+        self.feature_builder = feature_builder or FixtureMetadataFeatureBuilder()
 
     def predict(self, fixture_id: int, features: dict[str, Any]) -> PredictionResponse:
         """Predict one fixture, storing the feature snapshot and the result.
 
         Raises:
             FixtureNotFoundError: the fixture id is unknown.
+            FeaturesUnavailableError: the fixture cannot be described.
             InvalidPredictionError: the predictor broke the output contract.
         """
         fixture = self.fixture_repo.get_fixture_by_id(fixture_id)
         if fixture is None:
             raise FixtureNotFoundError(f"Fixture with ID {fixture_id} not found")
 
-        feature_vector = build_feature_vector(fixture, features)
+        feature_vector = self.feature_builder.build(fixture, features)
         probabilities = validate_probabilities(
             self.predictor.predict_proba(feature_vector.features)
         )

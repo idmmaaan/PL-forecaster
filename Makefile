@@ -9,7 +9,7 @@ COMPOSE := docker compose -f infra/compose.yaml
 
 .PHONY: help install format lint lint-py lint-web typecheck typecheck-py typecheck-web \
         test test-api test-ml test-web check db-up db-down db-logs db-reset migrate \
-        revision seed sync-fixtures ingest features api web clean
+        revision seed sync-fixtures ingest features baselines train api web clean
 
 help: ## Show the available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -106,3 +106,12 @@ web: ## Serve the web app on http://localhost:5173
 clean: ## Remove caches and build output
 	find . -name '__pycache__' -type d -prune -not -path './.venv/*' -exec rm -rf {} +
 	rm -rf .pytest_cache .mypy_cache .ruff_cache $(WEB_DIR)/dist
+
+baselines: ## Train and compare the mandatory baselines and calibration methods
+	$(UV) run python -m epl_predictor.training.baselines
+
+train: ## Train a candidate artifact: make train adapter=catboost version=1.0.0
+	$(UV) run python -m epl_predictor.training.train \
+		$(if $(adapter),--adapter $(adapter),) \
+		$(if $(version),--version $(version),) \
+		$(if $(calibration),--calibration $(calibration),)
