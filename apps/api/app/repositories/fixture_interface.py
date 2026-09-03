@@ -1,33 +1,32 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional
+
 from app.models.fixture import Fixture
-from app.schemas.fixture import FixtureResponse
+from app.models.team import Team
+
 
 class FixtureRepository(ABC):
-    """Interface for fixture data access operations"""
-    
+    """Interface for fixture data access.
+
+    Routes depend on this abstraction rather than on a concrete backend, so the
+    SQLAlchemy implementation can be swapped for an in-memory one in tests.
+    """
+
     @abstractmethod
-    def get_fixtures(self) -> List[Fixture]:
-        """Get all fixtures"""
-        pass
-    
-    @abstractmethod 
-    def get_fixture_by_id(self, fixture_id: int) -> Optional[Fixture]:
-        """Get a specific fixture by ID"""
-        pass
-    
+    def get_fixtures(self) -> list[Fixture]:
+        """Return every known fixture."""
+
     @abstractmethod
-    def get_upcoming_fixtures(self, limit: int = 10) -> List[Fixture]:
-        """Get upcoming fixtures"""
-        pass
-    
-    # Additional methods for database operations (not part of original interface but needed)
+    def get_fixture_by_id(self, fixture_id: int) -> Fixture | None:
+        """Return one fixture, or None when the id is unknown."""
+
     @abstractmethod
-    def upsert_team(self, team_data: dict) -> "Team":
-        """Upsert a team into the database"""
-        pass
-        
-    @abstractmethod  
-    def upsert_fixture(self, fixture_data: dict) -> "Fixture":
-        """Upsert a fixture into the database"""
-        pass
+    def get_upcoming_fixtures(self, limit: int = 10) -> list[Fixture]:
+        """Return scheduled fixtures that have not kicked off yet, soonest first."""
+
+    @abstractmethod
+    def upsert_team(self, team_data: dict) -> Team:
+        """Insert or update a team, keyed on `provider_id`."""
+
+    @abstractmethod
+    def upsert_fixture(self, fixture_data: dict) -> Fixture:
+        """Insert or update a fixture, keyed on `provider_id`."""

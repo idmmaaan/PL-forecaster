@@ -8,9 +8,20 @@ A local-first machine-learning project that predicts English Premier League matc
 
 The first product milestone is a web page that lists upcoming Premier League fixtures and provides a **Predict** button for each fixture. The prediction is produced by a dedicated tabular machine-learning model trained on historical match data and pre-match statistics.
 
-> Status: architecture and model-selection investigation completed; implementation has not started.
+> **Want to run it?** See **[docs/local-development.md](docs/local-development.md)** for
+> setup, the commands, how the pieces fit together, and the current known gaps.
+> The [Local development setup](#local-development-setup) section below describes
+> building the project from scratch instead.
+
+> Status: Milestones 1-6 implemented — repaired scaffold, full data model, real
+> fixture import, historical ingestion, leakage-safe v1 features, evaluation
+> harness with walk-forward backtesting, the four mandatory baselines with
+> calibration comparison, a trained CatBoost model served through the API, and
+> adapters plus a selection gate for the five Hugging Face candidates.
+> Outstanding: the model registry and promotion CLI (Milestone 7), batch
+> retraining (Milestone 8), and the complete five-way candidate benchmark.
 >
-> Last reviewed: 2026-08-31
+> Last reviewed: 2026-09-03
 
 ## Table of contents
 
@@ -1001,6 +1012,12 @@ There is deliberately no `qwen-worker` directory.
 ---
 
 ## Local development setup
+
+> The rest of this section describes creating the project from an empty
+> directory, which is how it was originally built. To run the repository as it
+> exists now, follow **[docs/local-development.md](docs/local-development.md)**
+> instead: five commands, plus how the running system works and what is still
+> missing.
 
 ### Prerequisites
 

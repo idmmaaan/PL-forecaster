@@ -1,1 +1,2 @@
-export * from './FixtureCard';
+export { FixtureCard } from './FixtureCard'
+export { PredictionPanel } from './PredictionPanel'

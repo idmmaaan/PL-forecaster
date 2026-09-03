@@ -1,53 +1,103 @@
-from typing import Dict, Any
+from typing import Any
+
+from app.core.exceptions import FixtureNotFoundError, InvalidPredictionError
+from app.models.model_version import ModelVersion
 from app.repositories.fixture_interface import FixtureRepository
-from ml.src/epl_predictor.predictors.dummy import DummyPredictor
+from app.repositories.prediction_interface import PredictionRecord, PredictionRepository
 from app.schemas.prediction import PredictionResponse
-from datetime import datetime
+from app.services.feature_service import FeatureBuilder, FixtureMetadataFeatureBuilder
+from epl_predictor import PROBABILITY_KEY_TO_OUTCOME, PROBABILITY_KEYS, Outcome
+from epl_predictor.predictors.base import Predictor
+
+#: Tolerance for the "probabilities sum to approximately 1.0" invariant.
+PROBABILITY_SUM_TOLERANCE = 1e-6
+
 
 class PredictorService:
-    """Service class for handling prediction operations"""
-    
-    def __init__(self, fixture_repo: FixtureRepository, predictor: DummyPredictor):
+    """Produces and persists predictions using the promoted model."""
+
+    def __init__(
+        self,
+        fixture_repo: FixtureRepository,
+        prediction_repo: PredictionRepository,
+        predictor: Predictor,
+        model_version: ModelVersion,
+        feature_builder: FeatureBuilder | None = None,
+    ):
         self.fixture_repo = fixture_repo
+        self.prediction_repo = prediction_repo
         self.predictor = predictor
-    
-    def predict(self, fixture_id: int, features: Dict[str, Any]) -> PredictionResponse:
-        """
-        Generate a prediction for a specific fixture
-        
-        Args:
-            fixture_id: ID of the fixture to predict
-            features: Dictionary of input features
-            
-        Returns:
-            PredictionResponse object with probabilities and outcome
-            
+        self.model_version = model_version
+        # Defaulting to fixture metadata keeps feature-free predictors, such as
+        # the stub used in tests, usable without a trained artifact.
+        self.feature_builder = feature_builder or FixtureMetadataFeatureBuilder()
+
+    def predict(self, fixture_id: int, features: dict[str, Any]) -> PredictionResponse:
+        """Predict one fixture, storing the feature snapshot and the result.
+
         Raises:
-            ValueError: If fixture is not found or invalid
+            FixtureNotFoundError: the fixture id is unknown.
+            FeaturesUnavailableError: the fixture cannot be described.
+            InvalidPredictionError: the predictor broke the output contract.
         """
-        # Get the fixture 
         fixture = self.fixture_repo.get_fixture_by_id(fixture_id)
-        if not fixture:
-            raise ValueError(f"Fixture with ID {fixture_id} not found")
-        
-        # Generate prediction using dummy predictor
-        probabilities = self.predictor.predict_proba(features)
-        
-        # Determine predicted outcome (class with highest probability)
-        predicted_outcome = max(probabilities.keys(), key=lambda k: probabilities[k])
-        
-        # Create and return prediction response
-        prediction_response = PredictionResponse(
-            prediction_id=1,  # Placeholder ID - would be generated in real implementation  
-            fixture_id=fixture.id,
-            home_team=fixture.home_team.name if hasattr(fixture, 'home_team') else "Unknown",
-            away_team=fixture.away_team.name if hasattr(fixture, 'away_team') else "Unknown",
-            predicted_outcome=predicted_outcome,
-            probabilities=probabilities,
-            model_name=self.predictor.model_name,
-            model_version=self.predictor.model_version,
-            feature_schema_version="1.0.0",  # Placeholder version
-            created_at=datetime.now().isoformat()
+        if fixture is None:
+            raise FixtureNotFoundError(f"Fixture with ID {fixture_id} not found")
+
+        feature_vector = self.feature_builder.build(fixture, features)
+        probabilities = validate_probabilities(
+            self.predictor.predict_proba(feature_vector.features)
         )
-        
-        return prediction_response
+
+        prediction = self.prediction_repo.record_prediction(
+            PredictionRecord(
+                fixture_id=fixture.id,
+                model_version_id=self.model_version.id,
+                probabilities=probabilities,
+                predicted_outcome=argmax_outcome(probabilities),
+                features=feature_vector.features,
+                feature_schema_version=feature_vector.feature_schema_version,
+                source_cutoff_at=feature_vector.source_cutoff_at,
+            )
+        )
+
+        return PredictionResponse.from_prediction(prediction)
+
+
+def validate_probabilities(probabilities: dict[str, float]) -> dict[str, float]:
+    """Check a predictor's output against the README's output invariants.
+
+    Returns the probabilities unchanged when valid; never repairs them.
+    """
+    missing = set(PROBABILITY_KEYS) - probabilities.keys()
+    if missing:
+        raise InvalidPredictionError(f"Predictor omitted required probabilities: {sorted(missing)}")
+
+    unexpected = probabilities.keys() - set(PROBABILITY_KEYS)
+    if unexpected:
+        raise InvalidPredictionError(
+            f"Predictor returned unexpected probability keys: {sorted(unexpected)}"
+        )
+
+    for key in PROBABILITY_KEYS:
+        value = probabilities[key]
+        if not isinstance(value, int | float) or isinstance(value, bool):
+            raise InvalidPredictionError(f"Probability '{key}' is not numeric: {value!r}")
+        if not 0.0 <= value <= 1.0:
+            raise InvalidPredictionError(f"Probability '{key}' is outside [0, 1]: {value}")
+
+    total = sum(probabilities[key] for key in PROBABILITY_KEYS)
+    if abs(total - 1.0) > PROBABILITY_SUM_TOLERANCE:
+        raise InvalidPredictionError(f"Probabilities must sum to 1.0, got {total}")
+
+    return probabilities
+
+
+def argmax_outcome(probabilities: dict[str, float]) -> Outcome:
+    """Return the outcome with the largest probability.
+
+    Iterating in canonical class order makes an exact tie resolve
+    deterministically to the earlier class rather than by dict ordering.
+    """
+    best_key = max(PROBABILITY_KEY_TO_OUTCOME, key=lambda key: probabilities[key])
+    return PROBABILITY_KEY_TO_OUTCOME[best_key]

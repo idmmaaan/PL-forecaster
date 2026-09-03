@@ -1,12 +1,14 @@
-import React from 'react';
-import { FixturesPage } from './pages';
+import { FixturesPage } from './pages'
 
-function App() {
+export function App() {
   return (
-    <div className="App">
+    <div className="app">
       <FixturesPage />
+      <footer className="app-footer">
+        Probabilistic model output for learning purposes. Not betting advice.
+      </footer>
     </div>
-  );
+  )
 }
 
-export default App;
+export default App

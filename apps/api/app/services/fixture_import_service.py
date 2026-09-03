@@ -1,96 +1,102 @@
-from typing import List, Dict, Any, Optional
+"""Converts football-data.org payloads into our domain models."""
+
 from datetime import datetime
+from typing import Any
+
+from app.clients.football_data_client import Match
+from app.clients.football_data_client import Team as FootballTeam
+from app.models.fixture import Fixture, FixtureStatus
 from app.models.team import Team
-from app.models.fixture import Fixture
-from app.clients.football_data_client import Match, Team as FootballTeam
-from app.core.config import settings
+
+PROVIDER = "football-data.org"
+
 
 class FixtureImportService:
-    """Service for importing and converting football-data.org fixtures into our domain models"""
-    
-    def __init__(self):
-        self.provider = "football-data.org"
-        
+    """Maps provider objects onto `Team` and `Fixture` rows."""
+
+    def __init__(self) -> None:
+        self.provider = PROVIDER
+
+    def build_fixture_provider_id(self, match: Match) -> str:
+        """Return the stable natural key used to deduplicate fixtures on re-import."""
+        return f"pl-{match.season_start_year}-{match.id}"
+
+    def build_team_provider_id(self, football_team: FootballTeam) -> str:
+        """Return the stable natural key used to deduplicate teams on re-import."""
+        return f"football-data-{football_team.id}"
+
     def convert_football_data_match_to_fixture(self, match: Match) -> Fixture:
-        """
-        Convert a football-data.org Match object to our internal Fixture model
-        
-        Args:
-            match: FootballData API Match object
-            
-        Returns:
-            Our internal Fixture domain model
+        """Convert a provider match into a `Fixture`.
+
+        Team foreign keys are left unset: they are resolved against the `teams`
+        table during synchronisation, once the teams themselves are persisted.
         """
         return Fixture(
             provider=self.provider,
-            provider_id=f"pl-{match.season_start_year}-{match.id}",
+            provider_id=self.build_fixture_provider_id(match),
             competition_code=match.competition_code,
             season_start_year=match.season_start_year,
             matchday=match.matchday,
-            kickoff_at=datetime.fromisoformat(match.kickoff_at.replace('Z', '+00:00')),
-            status=match.status,
-            home_team_id=None,  # Will be set when teams are created/lookup
-            away_team_id=None,  # Will be set when teams are created/lookup
+            kickoff_at=parse_kickoff(match.kickoff_at),
+            status=FixtureStatus(match.status.value),
             home_score=match.home_score,
             away_score=match.away_score,
-            result=match.result
+            result=match.result,
         )
-    
-    def convert_football_data_match_to_team(self, football_team: FootballTeam) -> Team:
-        """
-        Convert a football-data.org Team object to our internal Team model
-        
-        Args:
-            football_team: FootballData API Team object
-            
-        Returns:
-            Our internal Team domain model  
-        """
-        return Team(
-            provider_id=f"football-data-{football_team.id}",
-            name=football_team.name,
-            short_name=football_team.short_name,
-            code=None,  # Not provided in football-data.org v4
-            crest_url=football_team.crest_url
-        )
-    
-    def convert_football_data_matches_to_domain_models(self, matches: List[Match]) -> tuple[List[Team], List[Fixture]]:
-        """
-        Convert a list of football-data.org matches into our domain models (teams and fixtures)
-        
-        Args:
-            matches: List of Match objects from football-data.org
-            
-        Returns:
-            Tuple of (teams_list, fixtures_list) containing our internal domain models
-        """
-        teams = []
-        fixtures = []
-        
-        # Keep track of unique teams to avoid duplicates  
-        team_lookup: Dict[int, Team] = {}
-        
-        for match in matches:
-            # Convert home team if not already seen
-            if match.home_team.id not in team_lookup:
-                team = self.convert_football_data_match_to_team(match.home_team)
-                team_lookup[match.home_team.id] = team
-            
-            # Convert away team if not already seen  
-            if match.away_team.id not in team_lookup:
-                team = self.convert_football_data_match_to_team(match.away_team)
-                team_lookup[match.away_team.id] = team
-                
-        # Add all unique teams to the list
-        teams.extend(team_lookup.values())
-        
-        # Convert matches to fixtures
-        for match in matches:
-            fixture = self.convert_football_data_match_to_fixture(match)
-            # Note: We don't set team IDs here since they need to be resolved/assigned later
-            fixtures.append(fixture)
-            
-        return teams, fixtures
 
-# Create a singleton instance for use throughout the application
-fixture_import_service = FixtureImportService()
+    def convert_football_data_match_to_team(self, football_team: FootballTeam) -> Team:
+        """Convert a provider team into a `Team`."""
+        return Team(
+            provider_id=self.build_team_provider_id(football_team),
+            canonical_name=football_team.name,
+            short_name=football_team.short_name,
+            code=None,  # Not provided by football-data.org v4
+            crest_url=football_team.crest_url,
+        )
+
+    def convert_football_data_matches_to_domain_models(
+        self, matches: list[Match]
+    ) -> tuple[list[Team], list[Fixture]]:
+        """Convert many matches into unique teams plus one fixture per match."""
+        team_lookup: dict[int, Team] = {}
+
+        for match in matches:
+            for football_team in (match.home_team, match.away_team):
+                if football_team.id not in team_lookup:
+                    team_lookup[football_team.id] = self.convert_football_data_match_to_team(
+                        football_team
+                    )
+
+        fixtures = [self.convert_football_data_match_to_fixture(match) for match in matches]
+        return list(team_lookup.values()), fixtures
+
+    def to_team_dict(self, football_team: FootballTeam) -> dict[str, Any]:
+        """Return upsert-ready column values for a provider team."""
+        return {
+            "provider_id": self.build_team_provider_id(football_team),
+            "canonical_name": football_team.name,
+            "short_name": football_team.short_name,
+            "crest_url": football_team.crest_url,
+        }
+
+    def to_fixture_dict(self, match: Match, home_team_id: int, away_team_id: int) -> dict[str, Any]:
+        """Return upsert-ready column values for a provider match."""
+        return {
+            "provider": self.provider,
+            "provider_id": self.build_fixture_provider_id(match),
+            "competition_code": match.competition_code,
+            "season_start_year": match.season_start_year,
+            "matchday": match.matchday,
+            "kickoff_at": parse_kickoff(match.kickoff_at),
+            "status": FixtureStatus(match.status.value),
+            "home_team_id": home_team_id,
+            "away_team_id": away_team_id,
+            "home_score": match.home_score,
+            "away_score": match.away_score,
+            "result": match.result,
+        }
+
+
+def parse_kickoff(value: str) -> datetime:
+    """Parse the provider's UTC timestamp into a timezone-aware datetime."""
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))

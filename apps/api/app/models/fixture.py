@@ -1,41 +1,64 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Enum
-from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
-from ..core.database import Base
-from enum import Enum as PyEnum
+from datetime import datetime
+from enum import StrEnum
 
-class FixtureStatus(PyEnum):
+from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.sql import func
+
+from app.core.database import Base
+from app.models.team import Team
+
+
+class FixtureStatus(StrEnum):
+    """Fixture lifecycle states, mirroring football-data.org match statuses.
+
+    A `StrEnum` member compares equal to the provider's raw string value, so no
+    explicit conversion is needed at every boundary.
+    """
+
     SCHEDULED = "SCHEDULED"
+    TIMED = "TIMED"
     IN_PLAY = "IN_PLAY"
     PAUSED = "PAUSED"
     FINISHED = "FINISHED"
     POSTPONED = "POSTPONED"
     SUSPENDED = "SUSPENDED"
+    CANCELLED = "CANCELLED"
+
+
+#: Statuses for fixtures that have not started and can still be predicted.
+PREDICTABLE_STATUSES = (FixtureStatus.SCHEDULED, FixtureStatus.TIMED)
+
 
 class Fixture(Base):
     __tablename__ = "fixtures"
+    __table_args__ = (CheckConstraint("result IN ('H', 'D', 'A')", name="ck_fixtures_result"),)
 
-    id = Column(Integer, primary_key=True, index=True)
-    provider = Column(String(50), nullable=False)  # e.g., "football-data.org"
-    provider_id = Column(String(100), unique=True, nullable=False, index=True)
-    competition_code = Column(String(10), nullable=False)
-    season_start_year = Column(Integer, nullable=False)
-    matchday = Column(Integer, nullable=False)
-    kickoff_at = Column(DateTime(timezone=True), nullable=False)
-    status = Column(Enum(FixtureStatus), nullable=False, default=FixtureStatus.SCHEDULED)
-    
-    # Foreign keys to teams
-    home_team_id = Column(Integer, ForeignKey("teams.id"), nullable=False)
-    away_team_id = Column(Integer, ForeignKey("teams.id"), nullable=False)
-    
-    # Optional score fields for completed matches
-    home_score = Column(Integer)
-    away_score = Column(Integer)
-    result = Column(String(10))  # H, D, or A
-    
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-    
-    # Relationships
-    home_team = relationship("Team", foreign_keys=[home_team_id])
-    away_team = relationship("Team", foreign_keys=[away_team_id])
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    provider: Mapped[str] = mapped_column(String(50))  # e.g. "football-data.org"
+    provider_id: Mapped[str] = mapped_column(String(100), unique=True, index=True)
+    competition_code: Mapped[str] = mapped_column(String(10))
+    season_start_year: Mapped[int] = mapped_column()
+    matchday: Mapped[int] = mapped_column()
+    kickoff_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    status: Mapped[FixtureStatus] = mapped_column(
+        Enum(FixtureStatus, name="fixture_status"), default=FixtureStatus.SCHEDULED
+    )
+
+    home_team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"))
+    away_team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"))
+
+    # Populated only once the match has been played.
+    home_score: Mapped[int | None] = mapped_column()
+    away_score: Mapped[int | None] = mapped_column()
+    result: Mapped[str | None] = mapped_column(String(1))  # H, D, A, or NULL
+
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    home_team: Mapped[Team] = relationship(foreign_keys=[home_team_id])
+    away_team: Mapped[Team] = relationship(foreign_keys=[away_team_id])

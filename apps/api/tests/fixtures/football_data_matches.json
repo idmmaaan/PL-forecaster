@@ -1,0 +1,162 @@
+{
+  "filters": {
+    "season": "2026",
+    "competition": "PL"
+  },
+  "resultSet": {
+    "count": 3,
+    "first": "2026-09-12",
+    "last": "2026-09-20",
+    "played": 2
+  },
+  "competition": {
+    "id": 2021,
+    "name": "Premier League",
+    "code": "PL",
+    "type": "LEAGUE",
+    "emblem": "https://crests.football-data.org/PL.png"
+  },
+  "matches": [
+    {
+      "id": 14621,
+      "utcDate": "2026-09-12T14:00:00Z",
+      "status": "SCHEDULED",
+      "matchday": 4,
+      "stage": "REGULAR_SEASON",
+      "group": null,
+      "lastUpdated": "2026-09-01T09:12:33Z",
+      "competition": {
+        "id": 2021,
+        "name": "Premier League",
+        "code": "PL",
+        "type": "LEAGUE"
+      },
+      "season": {
+        "id": 2403,
+        "startDate": "2026-08-15",
+        "endDate": "2027-05-24",
+        "currentMatchday": 4
+      },
+      "homeTeam": {
+        "id": 57,
+        "name": "Arsenal FC",
+        "shortName": "Arsenal",
+        "tla": "ARS",
+        "crest": "https://crests.football-data.org/57.png"
+      },
+      "awayTeam": {
+        "id": 61,
+        "name": "Chelsea FC",
+        "shortName": "Chelsea",
+        "tla": "CHE",
+        "crest": "https://crests.football-data.org/61.png"
+      },
+      "score": {
+        "winner": null,
+        "duration": "REGULAR",
+        "fullTime": {
+          "home": null,
+          "away": null
+        },
+        "halfTime": {
+          "home": null,
+          "away": null
+        }
+      }
+    },
+    {
+      "id": 14622,
+      "utcDate": "2026-09-13T16:30:00Z",
+      "status": "FINISHED",
+      "matchday": 4,
+      "stage": "REGULAR_SEASON",
+      "group": null,
+      "lastUpdated": "2026-09-13T18:25:04Z",
+      "competition": {
+        "id": 2021,
+        "name": "Premier League",
+        "code": "PL",
+        "type": "LEAGUE"
+      },
+      "season": {
+        "id": 2403,
+        "startDate": "2026-08-15",
+        "endDate": "2027-05-24",
+        "currentMatchday": 4
+      },
+      "homeTeam": {
+        "id": 67,
+        "name": "Newcastle United FC",
+        "shortName": "Newcastle",
+        "tla": "NEW",
+        "crest": "https://crests.football-data.org/67.png"
+      },
+      "awayTeam": {
+        "id": 65,
+        "name": "Manchester City FC",
+        "shortName": "Man City",
+        "tla": "MCI",
+        "crest": "https://crests.football-data.org/65.png"
+      },
+      "score": {
+        "winner": "AWAY_TEAM",
+        "duration": "REGULAR",
+        "fullTime": {
+          "home": 1,
+          "away": 3
+        },
+        "halfTime": {
+          "home": 1,
+          "away": 1
+        }
+      }
+    },
+    {
+      "id": 14623,
+      "utcDate": "2026-09-20T13:00:00Z",
+      "status": "FINISHED",
+      "matchday": 5,
+      "stage": "REGULAR_SEASON",
+      "group": null,
+      "lastUpdated": "2026-09-20T15:02:11Z",
+      "competition": {
+        "id": 2021,
+        "name": "Premier League",
+        "code": "PL",
+        "type": "LEAGUE"
+      },
+      "season": {
+        "id": 2403,
+        "startDate": "2026-08-15",
+        "endDate": "2027-05-24",
+        "currentMatchday": 5
+      },
+      "homeTeam": {
+        "id": 64,
+        "name": "Liverpool FC",
+        "shortName": "Liverpool",
+        "tla": "LIV",
+        "crest": "https://crests.football-data.org/64.png"
+      },
+      "awayTeam": {
+        "id": 66,
+        "name": "Manchester United FC",
+        "shortName": "Man United",
+        "tla": "MUN",
+        "crest": "https://crests.football-data.org/66.png"
+      },
+      "score": {
+        "winner": "DRAW",
+        "duration": "REGULAR",
+        "fullTime": {
+          "home": 2,
+          "away": 2
+        },
+        "halfTime": {
+          "home": 0,
+          "away": 1
+        }
+      }
+    }
+  ]
+}

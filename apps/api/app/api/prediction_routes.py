@@ -1,35 +1,37 @@
-from fastapi import APIRouter, Depends, HTTPException
-from typing import Dict, Any
-from app.repositories.fixture_repository import TemporaryFixtureRepository
-from app.services.predictor_service import PredictorService
+from typing import Any
+
+from fastapi import APIRouter, Body, Depends, HTTPException
+
+from app.api.deps import get_prediction_repository, get_predictor_service
+from app.repositories.prediction_interface import PredictionRepository
 from app.schemas.prediction import PredictionResponse
-from ml.src/epl_predictor.predictors.dummy import DummyPredictor
+from app.services.predictor_service import PredictorService
 
-router = APIRouter(prefix="/fixtures", tags=["predictions"])
+router = APIRouter(tags=["predictions"])
 
-# Initialize services 
-dummy_predictor = DummyPredictor()
-fixture_repo = TemporaryFixtureRepository()
-predictor_service = PredictorService(fixture_repo, dummy_predictor)
 
-@router.post("/{fixture_id}/predict", response_model=PredictionResponse)
-async def predict_fixture(fixture_id: int, features: Dict[str, Any] = None):
+@router.post("/fixtures/{fixture_id}/predict", response_model=PredictionResponse)
+async def predict_fixture(
+    fixture_id: int,
+    features: dict[str, Any] | None = Body(default=None),
+    predictor_service: PredictorService = Depends(get_predictor_service),
+) -> PredictionResponse:
+    """Predict home win, draw, and away win probabilities for a fixture.
+
+    The feature snapshot and the resulting prediction are both stored, so the
+    returned `prediction_id` can be fetched again later. An optional request
+    body supplies feature overrides for experimentation.
     """
-    Generate prediction for a specific fixture
-    
-    Args:
-        fixture_id: ID of the fixture to predict
-        features: Optional dictionary of input features
-        
-    Returns:
-        PredictionResponse object with probabilities and outcome
-    """
-    try:
-        if features is None:
-            features = {}
-            
-        prediction = predictor_service.predict(fixture_id, features)
-        return prediction
-        
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    return predictor_service.predict(fixture_id, features or {})
+
+
+@router.get("/predictions/{prediction_id}", response_model=PredictionResponse)
+async def get_prediction(
+    prediction_id: int,
+    prediction_repo: PredictionRepository = Depends(get_prediction_repository),
+) -> PredictionResponse:
+    """Return a previously stored prediction."""
+    prediction = prediction_repo.get_prediction_by_id(prediction_id)
+    if prediction is None:
+        raise HTTPException(status_code=404, detail=f"Prediction with ID {prediction_id} not found")
+    return PredictionResponse.from_prediction(prediction)

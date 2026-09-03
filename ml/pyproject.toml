@@ -1,0 +1,33 @@
+[project]
+name = "epl-predictor"
+version = "0.1.0"
+description = "Leakage-safe feature engineering, training, and predictor adapters for EPL match outcomes"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=1.26",
+    "pandas>=2.2",
+    "pyarrow>=17.0",
+    "scikit-learn>=1.5",
+    "joblib>=1.4",
+    "requests>=2.32",
+]
+
+[project.optional-dependencies]
+# Gradient-boosted baseline that every foundation-model candidate must beat.
+catboost = ["catboost>=1.2"]
+# Foundation-model candidates are deliberately kept out of the default
+# environment: each one pulls in torch and multi-gigabyte pretrained weights.
+tabicl = ["tabicl>=0.1", "torch>=2.4"]
+mitra = ["autogluon-tabular[mitra]>=1.2"]
+tabstar = ["tabstar>=0.1"]
+tabpfn-mix = ["autogluon-tabular>=1.2"]
+tabpfn3 = ["tabpfn>=2.0"]
+hub = ["huggingface-hub>=0.26"]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["epl_predictor*"]
