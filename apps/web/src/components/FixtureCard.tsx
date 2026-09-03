@@ -1,104 +1,59 @@
-import React, { useState } from 'react';
-import { FixtureResponse, PredictionResponse } from '../api/types';
-import { apiClient } from '../api/client';
+import { useMutation } from '@tanstack/react-query'
+
+import { apiClient } from '../api/client'
+import type { FixtureResponse, PredictionResponse } from '../api/types'
+import { PredictionPanel } from './PredictionPanel'
 
 interface FixtureCardProps {
-  fixture: FixtureResponse;
+  fixture: FixtureResponse
 }
 
-export const FixtureCard: React.FC<FixtureCardProps> = ({ fixture }) => {
-  // Format kickoff time for display
-  const formatKickoffTime = (kickoffAt: string) => {
-    const date = new Date(kickoffAt);
-    return date.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+function formatKickoffTime(kickoffAt: string): string {
+  return new Date(kickoffAt).toLocaleString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
 
-  const [prediction, setPrediction] = useState<PredictionResponse | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handlePredict = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Call the prediction endpoint with empty features (as no features are required yet)
-      const result = await apiClient.predictFixture(fixture.id, {});
-      setPrediction(result);
-    } catch (err) {
-      console.error('Failed to get prediction:', err);
-      setError('Failed to generate prediction. Please try again later.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const formatPercentage = (value: number) => {
-    return `${(value * 100).toFixed(0)}%`;
-  };
+export function FixtureCard({ fixture }: FixtureCardProps) {
+  const prediction = useMutation<PredictionResponse, Error>({
+    mutationFn: () => apiClient.predictFixture(fixture.id),
+  })
 
   return (
-    <div className="fixture-card">
-      <div className="fixture-header">
+    <article className="fixture-card">
+      <header className="fixture-header">
         <span className="matchday">Matchday {fixture.matchday}</span>
-      </div>
-      
-      <div className="teams-container">
-        <div className="team home-team">
-          {fixture.home_team.name}
-        </div>
-        
-        <div className="vs">VS</div>
-        
-        <div className="team away-team">
-          {fixture.away_team.name}
-        </div>
-      </div>
-      
-      <div className="kickoff-container">
         <span className="kickoff-time">{formatKickoffTime(fixture.kickoff_at)}</span>
-      </div>
-      
-      <button 
-        className="predict-button"
-        onClick={handlePredict}
-        disabled={loading}
-      >
-        {loading ? 'Predicting...' : 'Predict'}
-      </button>
-      
-      {error && (
-        <div className="prediction-error">
-          {error}
-        </div>
-      )}
-      
-      {prediction && (
-        <div className="prediction-result">
-          <div className="probability-row">
-            <span>Home win:</span>
-            <span>{formatPercentage(prediction.probabilities.home_win)}</span>
-          </div>
-          <div className="probability-row">
-            <span>Draw:</span>
-            <span>{formatPercentage(prediction.probabilities.draw)}</span>
-          </div>
-          <div className="probability-row">
-            <span>Away win:</span>
-            <span>{formatPercentage(prediction.probabilities.away_win)}</span>
-          </div>
-          <div className="predicted-outcome">
-            Predicted: {prediction.predicted_outcome}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
+      </header>
 
-export default FixtureCard;
+      <div className="teams-container">
+        <span className="team home-team">{fixture.home_team.name}</span>
+        <span className="vs">v</span>
+        <span className="team away-team">{fixture.away_team.name}</span>
+      </div>
+
+      <button
+        type="button"
+        className="predict-button"
+        onClick={() => prediction.mutate()}
+        disabled={prediction.isPending}
+      >
+        {prediction.isPending ? 'Predicting…' : 'Predict'}
+      </button>
+
+      {prediction.isError && (
+        <p className="prediction-error" role="alert">
+          {prediction.error.message}
+        </p>
+      )}
+
+      {prediction.data && <PredictionPanel prediction={prediction.data} />}
+    </article>
+  )
+}
+
+export default FixtureCard

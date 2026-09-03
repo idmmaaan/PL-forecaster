@@ -1,0 +1,1 @@
+export { FixturesPage } from './FixturesPage'
