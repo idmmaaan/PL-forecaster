@@ -9,7 +9,7 @@ COMPOSE := docker compose -f infra/compose.yaml
 
 .PHONY: help install format lint lint-py lint-web typecheck typecheck-py typecheck-web \
         test test-api test-ml test-web check db-up db-down db-logs db-reset migrate \
-        revision seed sync-fixtures ingest features baselines train api web clean
+        revision seed sync-fixtures ingest features baselines candidates train api web clean
 
 help: ## Show the available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -109,6 +109,9 @@ clean: ## Remove caches and build output
 
 baselines: ## Train and compare the mandatory baselines and calibration methods
 	$(UV) run python -m epl_predictor.training.baselines
+
+candidates: ## Benchmark the Hugging Face candidates against CatBoost: make candidates only="tabicl"
+	$(UV) run python -m epl_predictor.training.candidates $(if $(only),--only $(only),)
 
 train: ## Train a candidate artifact: make train adapter=catboost version=1.0.0
 	$(UV) run python -m epl_predictor.training.train \

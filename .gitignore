@@ -84,3 +84,6 @@ logs/
 coverage.xml
 *.cover
 htmlcov/
+
+# AutoGluon writes timestamped scratch directories when fitting candidates.
+AutogluonModels/
