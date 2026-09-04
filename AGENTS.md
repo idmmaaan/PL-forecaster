@@ -13,8 +13,6 @@ This document provides guidelines for all coding agents working on this project.
 ## Architecture Compliance
 
 - **Preserve the architecture described in README.md**
-- **Use Qwen only as the development/coding assistant**
-- **Never integrate Qwen into the football prediction runtime**
 - **Keep predictor implementations behind a common interface**
 - **Prevent football data leakage** (as specified in README.md)
 - **Use chronological ML validation** (as specified in README.md)
