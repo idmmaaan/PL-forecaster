@@ -9,7 +9,13 @@ A local-first machine-learning project that predicts English Premier League matc
 The first product milestone is a web page that lists upcoming Premier League fixtures and provides a **Predict** button for each fixture. The prediction is produced by a dedicated tabular machine-learning model trained on historical match data and pre-match statistics.
 
 > **Want to run it?** See **[docs/local-development.md](docs/local-development.md)** for
-> setup, the commands, how the pieces fit together, and the current known gaps.
+> setup, the commands, and the current known gaps.
+>
+> **Want to understand it, or learn ML from it?** See
+> **[docs/how-it-works.md](docs/how-it-works.md)** — how the pipeline works, what
+> Hugging Face and transformers actually do here, and an eight-stage learning path
+> through the codebase.
+>
 > The [Local development setup](#local-development-setup) section below describes
 > building the project from scratch instead.
 

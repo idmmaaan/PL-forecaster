@@ -6,6 +6,10 @@ fit together once it is running.
 The README describes building this project from scratch. This document assumes
 the repository already exists and you want it working in front of you.
 
+For *why* the code is shaped this way — the leakage rules, what Hugging Face and
+transformers are doing here, and a step-by-step path for learning ML from the
+codebase — see [how-it-works.md](how-it-works.md).
+
 ## Contents
 
 - [What you need](#what-you-need)
@@ -312,6 +316,10 @@ Candidates whose group is not installed are reported as skipped, with the
 install command, rather than omitted — a report that silently left out TabSTAR
 would read as though TabSTAR had been beaten.
 
+For what these models actually are — pretrained transformers over tables, not
+language models — and why an in-context model inverts the usual cost profile,
+see [how-it-works.md](how-it-works.md#part-2--hugging-face-and-transformers).
+
 Promotion follows the README's gate, encoded in
 [`ml/src/epl_predictor/evaluation/gate.py`](../ml/src/epl_predictor/evaluation/gate.py)
 as seven criteria: it must beat the active model on log loss, not materially
@@ -325,20 +333,28 @@ legitimate outcome.
 Two findings from running this so far, both worth knowing before you spend an
 afternoon on it:
 
-- **TabICL beats CatBoost on log loss but fails the latency budget.** It
-  reached 0.994 against CatBoost's 1.02, but costs roughly 1050 ms to predict
-  a *single* fixture versus CatBoost's 2.4 ms, because an in-context model
+- **TabICL wins on every accuracy metric and is still rejected, on latency.** It
+  reached a log loss of 0.9940 against CatBoost's 1.0225, and was better on
+  Brier score, accuracy, and calibration too — but it costs 997 ms to predict a
+  *single* fixture versus CatBoost's 2.4 ms, because an in-context model
   re-attends over its stored training rows on every call. The API answers one
-  fixture per request, so that is a user-visible second of latency.
+  fixture per request, so that is a user-visible second of latency for a 0.03
+  gain, and the gate refuses it. See
+  `ml/reports/candidates/candidates-latest.md` for the recorded decision.
 - **TabPFN-3 cannot be benchmarked without a human accepting its licence.** It
   refuses to download weights until someone accepts the terms interactively
   and sets `TABPFN_TOKEN`. That is a consent step, not a defect, and the
   benchmark reports it as such. Its licence forbids production use regardless,
   so it can never be promoted.
 
-The full five-way benchmark has not been run. Mitra and TabPFNMix load and
-fine-tune successfully on Apple Silicon in a smoke test; their scores on the
-real validation season are still unmeasured.
+The full five-way benchmark has not been run: only CatBoost and TabICL have
+scores on the real validation season. Mitra and TabPFNMix load and fine-tune
+successfully on Apple Silicon in a smoke test, but are otherwise unmeasured.
+
+One environment gotcha. Extras are installed with `--inexact`, but any later
+`uv run` or `make` command re-syncs the environment to the lockfile default and
+will silently **remove** them. If a candidate stops importing, re-run its
+`uv sync --inexact ... --extra <name>` line.
 
 ## Everyday commands
 
